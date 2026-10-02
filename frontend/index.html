@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solar Tracker – IoT Monitor</title>
+    <meta name="description" content="Dual Axis Solar Tracker – Monitoring IoT realtime ESP32">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./css/style.css">
+</head>
+<body>
+
+<!-- ═══════════════════════════ NAVBAR ═══════════════════════════ -->
+<nav class="navbar">
+    <div class="nav-logo">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+        <span>SOLAR TRACKER</span>
+    </div>
+    <div class="nav-tabs">
+        <a href="#" class="nav-tab active" id="tab-iot" onclick="showPage('iot')">IoT</a>
+        <span class="nav-sep">·</span>
+        <a href="#" class="nav-tab" id="tab-dashboard" onclick="showPage('dashboard')">Dashboard</a>
+    </div>
+    <div class="nav-right">
+        <button class="nav-btn active" id="btn-iot-nav">📡 IoT</button>
+        <button class="nav-btn" id="btn-dash-nav" onclick="showPage('dashboard')">📊 Dashboard</button>
+    </div>
+</nav>
+
+<!-- ═══════════════════════════ PAGE: IoT ═══════════════════════════ -->
+<div id="page-iot" class="page active">
+    <div class="page-container">
+
+        <!-- Status bar -->
+        <div class="status-bar">
+            <div class="device-status" id="device-status">
+                <span class="status-dot offline" id="status-dot"></span>
+                <span id="status-text">ESP32 OFFLINE</span>
+                <span class="last-seen" id="last-seen"></span>
+            </div>
+            <div class="status-right">
+                <div class="weather-badge" id="weather-badge">
+                    <span id="weather-icon">⛅</span>
+                    <span id="weather-label">Menunggu data</span>
+                </div>
+                <div class="live-badge" id="live-badge">
+                    <span class="live-dot"></span> LIVE
+                </div>
+                <button class="btn-export" id="btn-export-iot" onclick="exportCsvIot()">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    Export CSV
+                </button>
+            </div>
+        </div>
+
+        <!-- KPI Cards -->
+        <div class="kpi-grid kpi-6">
+            <div class="kpi-card">
+                <div class="kpi-label">TEGANGAN</div>
+                <div class="kpi-value"><span id="iot-voltage">--</span><span class="kpi-unit">V</span></div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">ARUS</div>
+                <div class="kpi-value"><span id="iot-current">--</span><span class="kpi-unit">A</span></div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">DAYA</div>
+                <div class="kpi-value"><span id="iot-power">--</span><span class="kpi-unit">W</span></div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">ENERGI HARI INI</div>
+                <div class="kpi-value"><span id="iot-energy">--</span><span class="kpi-unit">Wh</span></div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">SUHU</div>
+                <div class="kpi-value"><span id="iot-temp">--</span><span class="kpi-unit">°C</span></div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">KELEMBABAN</div>
+                <div class="kpi-value"><span id="iot-humid">--</span><span class="kpi-unit">%</span></div>
+            </div>
+        </div>
+
+        <!-- Middle Row: Posisi Panel | Sensor LDR | Fuzzy Output -->
+        <div class="mid-grid">
+            <!-- Posisi Panel -->
+            <div class="panel glass-card">
+                <div class="panel-title">POSISI PANEL</div>
+                <div class="gauges-row">
+                    <div class="gauge-wrap">
+                        <div class="gauge" id="gauge-azimuth">
+                            <svg class="gauge-svg" viewBox="0 0 120 120">
+                                <circle class="gauge-bg" cx="60" cy="60" r="50" />
+                                <circle class="gauge-fill" id="gauge-az-fill" cx="60" cy="60" r="50"
+                                    stroke-dasharray="0 314" stroke-dashoffset="79" />
+                            </svg>
+                            <div class="gauge-val" id="gauge-az-val">--</div>
+                        </div>
+                        <div class="gauge-label">AZIMUTH</div>
+                    </div>
+                    <div class="gauge-wrap">
+                        <div class="gauge" id="gauge-elevation">
+                            <svg class="gauge-svg" viewBox="0 0 120 120">
+                                <circle class="gauge-bg" cx="60" cy="60" r="50" />
+                                <circle class="gauge-fill gauge-fill-green" id="gauge-el-fill" cx="60" cy="60" r="50"
+                                    stroke-dasharray="0 314" stroke-dashoffset="79" />
+                            </svg>
+                            <div class="gauge-val" id="gauge-el-val">--</div>
+                        </div>
+                        <div class="gauge-label">ELEVASI</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sensor LDR -->
+            <div class="panel glass-card">
+                <div class="panel-title">SENSOR LDR</div>
+                <div class="ldr-grid">
+                    <div class="ldr-item">
+                        <div class="ldr-row"><span class="ldr-pos">TL</span><span class="ldr-val" id="ldr-tl">--</span></div>
+                        <div class="ldr-bar-wrap"><div class="ldr-bar" id="ldr-tl-bar" style="width:0%"></div></div>
+                    </div>
+                    <div class="ldr-item">
+                        <div class="ldr-row"><span class="ldr-pos">TR</span><span class="ldr-val" id="ldr-tr">--</span></div>
+                        <div class="ldr-bar-wrap"><div class="ldr-bar ldr-bar-yellow" id="ldr-tr-bar" style="width:0%"></div></div>
+                    </div>
+                    <div class="ldr-item">
+                        <div class="ldr-row"><span class="ldr-pos">BL</span><span class="ldr-val" id="ldr-bl">--</span></div>
+                        <div class="ldr-bar-wrap"><div class="ldr-bar" id="ldr-bl-bar" style="width:0%"></div></div>
+                    </div>
+                    <div class="ldr-item">
+                        <div class="ldr-row"><span class="ldr-pos">BR</span><span class="ldr-val" id="ldr-br">--</span></div>
+                        <div class="ldr-bar-wrap"><div class="ldr-bar ldr-bar-yellow" id="ldr-br-bar" style="width:0%"></div></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Fuzzy Output -->
+            <div class="panel glass-card">
+                <div class="panel-title">FUZZY OUTPUT</div>
+                <div class="fuzzy-rows">
+                    <div class="fuzzy-item">
+                        <div class="fuzzy-label">dH (error horizontal)</div>
+                        <div class="fuzzy-bar-row">
+                            <div class="fuzzy-bar-wrap"><div class="fuzzy-bar fuzzy-bar-cyan" id="fuzzy-dh-bar" style="width:0%"></div></div>
+                            <span class="fuzzy-val" id="fuzzy-dh">--°</span>
+                        </div>
+                    </div>
+                    <div class="fuzzy-item">
+                        <div class="fuzzy-label">dV (error vertikal)</div>
+                        <div class="fuzzy-bar-row">
+                            <div class="fuzzy-bar-wrap"><div class="fuzzy-bar fuzzy-bar-green" id="fuzzy-dv-bar" style="width:0%"></div></div>
+                            <span class="fuzzy-val" id="fuzzy-dv">--°</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="fuzzy-footer">
+                    <div class="fuzzy-count-label">Total data diterima</div>
+                    <div class="fuzzy-count" id="fuzzy-count">0 <span>record</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Row -->
+        <div class="chart-row">
+            <div class="chart-card glass-card">
+                <div class="chart-header">
+                    <div class="chart-title">GRAFIK HARI INI</div>
+                    <div class="chart-toggle">
+                        <button class="toggle-btn active" onclick="switchIotChart('power')" id="tog-power">Daya (W)</button>
+                        <button class="toggle-btn" onclick="switchIotChart('voltage')" id="tog-volt">Tegangan (V)</button>
+                        <button class="toggle-btn" onclick="switchIotChart('current')" id="tog-curr">Arus (A)</button>
+                    </div>
+                </div>
+                <canvas id="iotMainChart" height="120"></canvas>
+            </div>
+        </div>
+        <div class="chart-row">
+            <div class="chart-card glass-card">
+                <div class="chart-header">
+                    <div class="chart-title">PERGERAKAN SUDUT SERVO HARI INI</div>
+                    <div class="chart-legend">
+                        <span class="legend-dot cyan"></span> Azimuth
+                        <span class="legend-dot green" style="margin-left:12px"></span> Elevasi
+                    </div>
+                </div>
+                <canvas id="servoChart" height="100"></canvas>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- ═══════════════════════════ PAGE: DASHBOARD ═══════════════════════════ -->
+<div id="page-dashboard" class="page" style="display:none">
+    <div class="page-container">
+
+        <!-- KPI Cards -->
+        <div class="kpi-grid kpi-5">
+            <div class="kpi-card">
+                <div class="kpi-label">ENERGI HARI INI</div>
+                <div class="kpi-value accent"><span id="dash-energy">--</span><span class="kpi-unit">Wh</span></div>
+                <div class="kpi-diff" id="dash-energy-diff"></div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">DAYA RATA-RATA</div>
+                <div class="kpi-value"><span id="dash-avg-power">--</span><span class="kpi-unit">W</span></div>
+                <div class="kpi-diff" id="dash-power-diff"></div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">DAYA MAKS</div>
+                <div class="kpi-value"><span id="dash-max-power">--</span><span class="kpi-unit">W</span></div>
+                <div class="kpi-sub" id="dash-max-sub"></div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">TEGANGAN RATA-RATA</div>
+                <div class="kpi-value"><span id="dash-avg-volt">--</span></div>
+                <div class="kpi-sub" id="dash-volt-sub"></div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">RELIABILITAS TX</div>
+                <div class="kpi-value"><span id="dash-reliability">--</span></div>
+                <div class="kpi-sub" id="dash-rel-sub"></div>
+            </div>
+        </div>
+
+        <!-- 14-day chart -->
+        <div class="chart-card glass-card">
+            <div class="chart-header">
+                <div class="chart-title">ENERGI KUMULATIF HARIAN (14 HARI)</div>
+                <div class="dash-badge">Wh/hari</div>
+            </div>
+            <canvas id="dailyBarChart" height="90"></canvas>
+            <div class="chart-hint">Klik bar untuk melihat detail harian dari tanggal tersebut</div>
+        </div>
+
+        <!-- Detail Section -->
+        <div class="detail-section glass-card">
+            <div class="detail-header">
+                <div class="detail-title">DETAIL TANGGAL</div>
+                <div class="detail-controls">
+                    <input type="date" id="detail-date" class="date-picker" />
+                    <button class="btn-export" onclick="exportCsvDash()">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        Export CSV
+                    </button>
+                    <div class="tab-group">
+                        <button class="tab-btn active" id="dtab-grafik" onclick="switchDetailTab('grafik')">Grafik</button>
+                        <button class="tab-btn" id="dtab-tabel" onclick="switchDetailTab('tabel')">Tabel</button>
+                        <button class="tab-btn" id="dtab-log" onclick="switchDetailTab('log')">Log TX</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Summary mini cards -->
+            <div class="detail-summary">
+                <div class="ds-card"><div class="ds-label">Rata-rata P</div><div class="ds-val"><span id="ds-avgp">--</span> W</div></div>
+                <div class="ds-card"><div class="ds-label">Maks P</div><div class="ds-val accent"><span id="ds-maxp">--</span> W</div></div>
+                <div class="ds-card"><div class="ds-label">Min P</div><div class="ds-val"><span id="ds-minp">--</span> W</div></div>
+                <div class="ds-card"><div class="ds-label">Rata-rata V</div><div class="ds-val"><span id="ds-avgv">--</span> V</div></div>
+                <div class="ds-card"><div class="ds-label">Total Energi</div><div class="ds-val"><span id="ds-energy">--</span> Wh</div></div>
+                <div class="ds-card"><div class="ds-label">Aksi Efisiensi</div><div class="ds-val"><span id="ds-eff">--</span> %</div></div>
+            </div>
+
+            <!-- Tab Content: Grafik -->
+            <div id="dtab-content-grafik" class="dtab-content active">
+                <canvas id="detailPowerChart" height="100"></canvas>
+                <canvas id="detailServoChart" height="80" style="margin-top:20px"></canvas>
+            </div>
+
+            <!-- Tab Content: Tabel -->
+            <div id="dtab-content-tabel" class="dtab-content" style="display:none">
+                <div class="table-wrap">
+                    <table class="data-table" id="detail-table">
+                        <thead>
+                            <tr>
+                                <th>Waktu</th><th>Tegangan (V)</th><th>Arus (A)</th>
+                                <th>Daya (W)</th><th>Azimuth (°)</th><th>Elevasi (°)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="detail-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Tab Content: Log TX -->
+            <div id="dtab-content-log" class="dtab-content" style="display:none">
+                <div class="log-list" id="log-list">
+                    <div class="log-empty">Pilih tanggal untuk melihat log transmisi</div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script type="module" src="./js/app.js"></script>
+</body>
+</html>
