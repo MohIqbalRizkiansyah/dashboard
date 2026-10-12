@@ -6,8 +6,8 @@
     <title>Solar Tracker – IoT Monitor</title>
     <meta name="description" content="Dual Axis Solar Tracker – Monitoring IoT realtime ESP32">
     <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
-  <script type="module" crossorigin src="/assets/index-AH95fuzd.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/index-Bnfm9qJW.css">
+  <script type="module" crossorigin src="/assets/index-BnnTzgQ-.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-qjKjtqtP.css">
 </head>
 <body>
 
@@ -15,21 +15,25 @@
 <nav class="navbar">
     <div class="nav-logo">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-        <span>SOLAR TRACKER</span>
-    </div>
-    <div class="nav-tabs">
-        <a href="#" class="nav-tab active" id="tab-iot" onclick="showPage('iot')">IoT</a>
-        <span class="nav-sep">·</span>
-        <a href="#" class="nav-tab" id="tab-dashboard" onclick="showPage('dashboard')">Dashboard</a>
+        <span class="nav-brand">
+            <strong>SOLAR TRACKER</strong>
+            <small>Dual-Axis · Fuzzy Logic · IoT</small>
+        </span>
     </div>
     <div class="nav-right">
-        <button class="nav-btn active" id="btn-iot-nav">📡 IoT</button>
-        <button class="nav-btn" id="btn-dash-nav" onclick="showPage('dashboard')">📊 Dashboard</button>
+        <button class="nav-btn active" id="btn-iot-nav">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2" width="4" height="4"/><rect x="10" y="2" width="4" height="4"/><rect x="2" y="10" width="4" height="4"/><rect x="10" y="10" width="4" height="4"/></svg>
+            Dashboard
+        </button>
+        <button class="nav-btn" id="btn-dash-nav">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 4h9M3 8h9M3 12h9"/><path d="m1 4 1 1 2-2M1 8l1 1 2-2M1 12l1 1 2-2"/></svg>
+            Riwayat
+        </button>
     </div>
 </nav>
 
 <!-- ═══════════════════════════ PAGE: IoT ═══════════════════════════ -->
-<div id="page-iot" class="page active">
+<div id="page-iot" class="page active live-dashboard">
     <div class="page-container">
 
         <!-- Status bar -->
@@ -118,19 +122,19 @@
                 <div class="panel-title">SENSOR LDR</div>
                 <div class="ldr-grid">
                     <div class="ldr-item">
-                        <div class="ldr-row"><span class="ldr-pos">TL</span><span class="ldr-val" id="ldr-tl">--</span></div>
+                        <div class="ldr-row"><span class="ldr-pos">NW</span><span class="ldr-val" id="ldr-tl">--</span></div>
                         <div class="ldr-bar-wrap"><div class="ldr-bar" id="ldr-tl-bar" style="width:0%"></div></div>
                     </div>
                     <div class="ldr-item">
-                        <div class="ldr-row"><span class="ldr-pos">TR</span><span class="ldr-val" id="ldr-tr">--</span></div>
+                        <div class="ldr-row"><span class="ldr-pos">NE</span><span class="ldr-val" id="ldr-tr">--</span></div>
                         <div class="ldr-bar-wrap"><div class="ldr-bar ldr-bar-yellow" id="ldr-tr-bar" style="width:0%"></div></div>
                     </div>
                     <div class="ldr-item">
-                        <div class="ldr-row"><span class="ldr-pos">BL</span><span class="ldr-val" id="ldr-bl">--</span></div>
+                        <div class="ldr-row"><span class="ldr-pos">SW</span><span class="ldr-val" id="ldr-bl">--</span></div>
                         <div class="ldr-bar-wrap"><div class="ldr-bar" id="ldr-bl-bar" style="width:0%"></div></div>
                     </div>
                     <div class="ldr-item">
-                        <div class="ldr-row"><span class="ldr-pos">BR</span><span class="ldr-val" id="ldr-br">--</span></div>
+                        <div class="ldr-row"><span class="ldr-pos">SE</span><span class="ldr-val" id="ldr-br">--</span></div>
                         <div class="ldr-bar-wrap"><div class="ldr-bar ldr-bar-yellow" id="ldr-br-bar" style="width:0%"></div></div>
                     </div>
                 </div>
@@ -193,11 +197,11 @@
 </div>
 
 <!-- ═══════════════════════════ PAGE: DASHBOARD ═══════════════════════════ -->
-<div id="page-dashboard" class="page" style="display:none">
+<div id="page-dashboard" class="page history-dashboard" style="display:none">
     <div class="page-container">
 
         <!-- KPI Cards -->
-        <div class="kpi-grid kpi-5">
+        <div class="kpi-grid history-kpi-grid">
             <div class="kpi-card">
                 <div class="kpi-label">ENERGI HARI INI</div>
                 <div class="kpi-value accent"><span id="dash-energy">--</span><span class="kpi-unit">Wh</span></div>
@@ -215,13 +219,23 @@
             </div>
             <div class="kpi-card">
                 <div class="kpi-label">TEGANGAN RATA-RATA</div>
-                <div class="kpi-value"><span id="dash-avg-volt">--</span></div>
+                <div class="kpi-value"><span id="dash-avg-volt">--</span><span class="kpi-unit">V</span></div>
                 <div class="kpi-sub" id="dash-volt-sub"></div>
             </div>
             <div class="kpi-card">
                 <div class="kpi-label">RELIABILITAS TX</div>
                 <div class="kpi-value"><span id="dash-reliability">--</span></div>
                 <div class="kpi-sub" id="dash-rel-sub"></div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">SUHU RATA-RATA</div>
+                <div class="kpi-value"><span id="dash-avg-temp">--</span><span class="kpi-unit">°C</span></div>
+                <div class="kpi-sub" id="dash-temp-sub"></div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">KELEMBAPAN RATA-RATA</div>
+                <div class="kpi-value"><span id="dash-avg-humidity">--</span><span class="kpi-unit">%RH</span></div>
+                <div class="kpi-sub" id="dash-humidity-sub"></div>
             </div>
         </div>
 
@@ -260,13 +274,25 @@
                 <div class="ds-card"><div class="ds-label">Min P</div><div class="ds-val"><span id="ds-minp">--</span> W</div></div>
                 <div class="ds-card"><div class="ds-label">Rata-rata V</div><div class="ds-val"><span id="ds-avgv">--</span> V</div></div>
                 <div class="ds-card"><div class="ds-label">Total Energi</div><div class="ds-val"><span id="ds-energy">--</span> Wh</div></div>
-                <div class="ds-card"><div class="ds-label">Aksi Efisiensi</div><div class="ds-val"><span id="ds-eff">--</span> %</div></div>
+                <div class="ds-card"><div class="ds-label">Rata-rata Suhu</div><div class="ds-val"><span id="ds-temp">--</span> °C</div></div>
+                <div class="ds-card"><div class="ds-label">Rata-rata RH</div><div class="ds-val"><span id="ds-humidity">--</span> %RH</div></div>
+                <div class="ds-card"><div class="ds-label">Reliabilitas</div><div class="ds-val"><span id="ds-reliability">--</span> %</div></div>
             </div>
 
             <!-- Tab Content: Grafik -->
             <div id="dtab-content-grafik" class="dtab-content active">
-                <canvas id="detailPowerChart" height="100"></canvas>
-                <canvas id="detailServoChart" height="80" style="margin-top:20px"></canvas>
+                <div class="detail-chart-block">
+                    <div class="detail-chart-title">Daya (W)</div>
+                    <canvas id="detailPowerChart" height="100"></canvas>
+                </div>
+                <div class="detail-chart-block">
+                    <div class="detail-chart-title">Sensor DHT11</div>
+                    <canvas id="detailEnvironmentChart" height="80"></canvas>
+                </div>
+                <div class="detail-chart-block">
+                    <div class="detail-chart-title">Pergerakan Servo (°)</div>
+                    <canvas id="detailServoChart" height="80"></canvas>
+                </div>
             </div>
 
             <!-- Tab Content: Tabel -->
