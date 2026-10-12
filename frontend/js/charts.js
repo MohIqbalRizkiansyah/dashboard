@@ -104,7 +104,7 @@ export function pushIotData(label, power, voltage, current) {
 function refreshIotChart() {
     if (!iotChart) return;
     let data, color, label;
-    if (iotMode === 'power')   { data = iotBuffers.power;   color = CYAN;   label = 'Daya (W)'; }
+    if (iotMode === 'power')   { data = iotBuffers.power;   color = GREEN;  label = 'Daya (W)'; }
     if (iotMode === 'voltage') { data = iotBuffers.voltage; color = YELLOW; label = 'Tegangan (V)'; }
     if (iotMode === 'current') { data = iotBuffers.current; color = GREEN;  label = 'Arus (A)'; }
     iotChart.data.labels = [...iotBuffers.labels];
@@ -215,6 +215,7 @@ export function updateDailyBarChart(labels, values, highlightIdx = -1) {
 // DETAIL POWER CHART
 // ════════════════════════════════════════════════════════
 let detailPChart = null;
+let detailEnvironmentChart = null;
 
 export function initDetailPowerChart() {
     const ctx = document.getElementById('detailPowerChart').getContext('2d');
@@ -229,10 +230,29 @@ export function updateDetailPowerChart(labels, power, voltage, current) {
     if (!detailPChart) return;
     detailPChart.data.labels = labels;
     detailPChart.data.datasets = [
-        lineDs('Daya (W)', power, CYAN, true),
+        lineDs('Daya (W)', power, GREEN, true),
         lineDs('Tegangan (V)', voltage, YELLOW, false),
     ];
     detailPChart.update();
+}
+
+export function initDetailEnvironmentChart() {
+    const ctx = document.getElementById('detailEnvironmentChart').getContext('2d');
+    detailEnvironmentChart = new Chart(ctx, {
+        type: 'line',
+        data: { labels: [], datasets: [] },
+        options: { ...baseOptions('%') }
+    });
+}
+
+export function updateDetailEnvironmentChart(labels, temperature, humidity) {
+    if (!detailEnvironmentChart) return;
+    detailEnvironmentChart.data.labels = labels;
+    detailEnvironmentChart.data.datasets = [
+        lineDs('Suhu (°C)', temperature, YELLOW, false),
+        lineDs('Kelembapan (%RH)', humidity, CYAN, false),
+    ];
+    detailEnvironmentChart.update();
 }
 
 // ════════════════════════════════════════════════════════

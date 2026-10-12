@@ -8,13 +8,14 @@ import {
     initServoChart, pushServoData,
     initDailyBarChart, updateDailyBarChart,
     initDetailPowerChart, updateDetailPowerChart,
+    initDetailEnvironmentChart, updateDetailEnvironmentChart,
     initDetailServoChart, updateDetailServoChart
 } from './charts.js';
 
 // ══════════════════════════════════════════════
 // Set VITE_BACKEND_URL in frontend/.env when the backend is hosted elsewhere.
 // ══════════════════════════════════════════════
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://192.168.0.233:3000';
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
 
 // ══════════════════════════════════════════════
 // STATE
@@ -41,6 +42,7 @@ async function init() {
     initServoChart();
     initDailyBarChart(onBarClick);
     initDetailPowerChart();
+    initDetailEnvironmentChart();
     initDetailServoChart();
 
     // Set date picker to today
@@ -73,8 +75,6 @@ window.showPage = function(page) {
     currentPage = page;
     document.getElementById('page-iot').style.display       = page === 'iot'       ? ''     : 'none';
     document.getElementById('page-dashboard').style.display = page === 'dashboard' ? ''     : 'none';
-    document.getElementById('tab-iot').classList.toggle('active',       page === 'iot');
-    document.getElementById('tab-dashboard').classList.toggle('active', page === 'dashboard');
     document.getElementById('btn-iot-nav').classList.toggle('active',   page === 'iot');
     document.getElementById('btn-dash-nav').classList.toggle('active',  page === 'dashboard');
     // Reinit dashboard charts after display
@@ -86,9 +86,6 @@ window.showPage = function(page) {
     }
 };
 
-// ── Tab nav ──────────────────────────────────
-document.getElementById('tab-iot').addEventListener('click', e => { e.preventDefault(); showPage('iot'); });
-document.getElementById('tab-dashboard').addEventListener('click', e => { e.preventDefault(); showPage('dashboard'); });
 document.getElementById('btn-iot-nav').addEventListener('click', () => showPage('iot'));
 document.getElementById('btn-dash-nav').addEventListener('click', () => showPage('dashboard'));
 
@@ -140,8 +137,14 @@ async function loadDailyBar() {
         const day = row.created_at.slice(0, 10);
         grouped[day] = (grouped[day] || 0) + (Number(row.power) || 0) * (30 / 3600);
     });
-    bar14Labels = Object.keys(grouped).sort();
-    bar14Values = bar14Labels.map(day => +grouped[day].toFixed(1));
+    const lastDay = new Date();
+    lastDay.setUTCHours(0, 0, 0, 0);
+    bar14Labels = Array.from({ length: 14 }, (_, index) => {
+        const day = new Date(lastDay);
+        day.setUTCDate(day.getUTCDate() - (13 - index));
+        return day.toISOString().slice(0, 10);
+    });
+    bar14Values = bar14Labels.map(day => +((grouped[day] || 0).toFixed(1)));
 
     const todayIdx = bar14Labels.indexOf(todayStr());
     updateDailyBarChart(
@@ -201,26 +204,44 @@ async function loadDetailDate(date) {
     const minP   = Math.min(...power);
     const avgV   = avg(voltage);
     const energy = +(power.reduce((s, p) => s + p * (30/3600), 0)).toFixed(1);
-    const eff    = maxP > 0 ? +((avgP / maxP) * 100).toFixed(1) : 0;
+    const temperatures = sensor.filter(r => r.temperature != null).map(r => Number(r.temperature)).filter(Number.isFinite);
+    const humidities = sensor.filter(r => r.humidity != null).map(r => Number(r.humidity)).filter(Number.isFinite);
 
     setEl('ds-avgp', avgP.toFixed(1));
     setEl('ds-maxp', maxP.toFixed(1));
     setEl('ds-minp', minP.toFixed(1));
     setEl('ds-avgv', avgV.toFixed(2));
     setEl('ds-energy', energy);
-    setEl('ds-eff', eff);
+    setEl('ds-temp', temperatures.length ? avg(temperatures).toFixed(1) : '--');
+    setEl('ds-humidity', humidities.length ? avg(humidities).toFixed(1) : '--');
 
     // Dashboard KPIs
     setEl('dash-avg-power', avgP.toFixed(1));
     setEl('dash-max-power', maxP.toFixed(1));
+    setEl('dash-max-sub', `Puncak pukul ${labels[power.indexOf(maxP)] || '--'}`);
     setEl('dash-avg-volt', avgV.toFixed(2));
+    setEl('dash-volt-sub', `Maks: ${Math.max(...voltage).toFixed(2)} V · Min: ${Math.min(...voltage).toFixed(2)} V`);
     const relCount  = sensor.length;
     const relExpect = Math.max(relCount, Math.round((24 * 60 * 60) / 30));
     const rel = Math.min(100, +((relCount / relExpect) * 100).toFixed(1));
     setEl('dash-reliability', rel);
     setEl('dash-rel-sub', `${relCount} record terkumpul`);
+    setEl('ds-reliability', rel);
+    setEl('dash-avg-temp', temperatures.length ? avg(temperatures).toFixed(1) : '--');
+    setEl('dash-temp-sub', temperatures.length
+        ? `Maks: ${Math.max(...temperatures).toFixed(1)} °C · Min: ${Math.min(...temperatures).toFixed(1)} °C`
+        : 'Tidak ada data');
+    setEl('dash-avg-humidity', humidities.length ? avg(humidities).toFixed(1) : '--');
+    setEl('dash-humidity-sub', humidities.length
+        ? `Maks: ${Math.max(...humidities).toFixed(1)}% · Min: ${Math.min(...humidities).toFixed(1)}%`
+        : 'Tidak ada data');
 
     updateDetailPowerChart(labels, power, voltage, current);
+    updateDetailEnvironmentChart(
+        labels,
+        sensor.map(r => r.temperature == null ? null : Number(r.temperature)),
+        sensor.map(r => r.humidity == null ? null : Number(r.humidity))
+    );
 
     // Extract servo positions from the readings list:
     const sLabels = [];
@@ -246,7 +267,15 @@ async function loadDetailDate(date) {
 }
 
 function clearDetailCards() {
-    ['ds-avgp','ds-maxp','ds-minp','ds-avgv','ds-energy','ds-eff'].forEach(id => setEl(id, '--'));
+    ['ds-avgp','ds-maxp','ds-minp','ds-avgv','ds-energy','ds-temp','ds-humidity',
+        'ds-reliability','dash-energy','dash-avg-power','dash-max-power','dash-avg-volt','dash-reliability',
+        'dash-avg-temp','dash-avg-humidity'].forEach(id => setEl(id, '--'));
+    ['dash-rel-sub','dash-temp-sub','dash-humidity-sub','dash-max-sub','dash-volt-sub','dash-energy-diff'].forEach(id => setEl(id, ''));
+    updateDetailPowerChart([], [], [], []);
+    updateDetailEnvironmentChart([], [], []);
+    updateDetailServoChart([], [], []);
+    populateTable([]);
+    populateLog([]);
 }
 
 function populateTable(sensor) {
