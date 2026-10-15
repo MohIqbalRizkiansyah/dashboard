@@ -8,13 +8,20 @@ import {
     initServoChart, pushServoData,
     initDailyBarChart, updateDailyBarChart,
     initDetailPowerChart, updateDetailPowerChart,
+    initDetailEnvironmentChart, updateDetailEnvironmentChart,
     initDetailServoChart, updateDetailServoChart
 } from './charts.js';
 
 // ══════════════════════════════════════════════
 // Set VITE_BACKEND_URL in frontend/.env when the backend is hosted elsewhere.
 // ══════════════════════════════════════════════
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://192.168.0.233:3000';
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://server-j22jq4eq6-mohiqbalrizkiansyahs-projects.vercel.app';
+const JAKARTA_DATE_FORMATTER = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Jakarta',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+});
 
 // ══════════════════════════════════════════════
 // STATE
@@ -41,6 +48,7 @@ async function init() {
     initServoChart();
     initDailyBarChart(onBarClick);
     initDetailPowerChart();
+    initDetailEnvironmentChart();
     initDetailServoChart();
 
     // Set date picker to today
@@ -73,8 +81,6 @@ window.showPage = function(page) {
     currentPage = page;
     document.getElementById('page-iot').style.display       = page === 'iot'       ? ''     : 'none';
     document.getElementById('page-dashboard').style.display = page === 'dashboard' ? ''     : 'none';
-    document.getElementById('tab-iot').classList.toggle('active',       page === 'iot');
-    document.getElementById('tab-dashboard').classList.toggle('active', page === 'dashboard');
     document.getElementById('btn-iot-nav').classList.toggle('active',   page === 'iot');
     document.getElementById('btn-dash-nav').classList.toggle('active',  page === 'dashboard');
     // Reinit dashboard charts after display
@@ -86,9 +92,6 @@ window.showPage = function(page) {
     }
 };
 
-// ── Tab nav ──────────────────────────────────
-document.getElementById('tab-iot').addEventListener('click', e => { e.preventDefault(); showPage('iot'); });
-document.getElementById('tab-dashboard').addEventListener('click', e => { e.preventDefault(); showPage('dashboard'); });
 document.getElementById('btn-iot-nav').addEventListener('click', () => showPage('iot'));
 document.getElementById('btn-dash-nav').addEventListener('click', () => showPage('dashboard'));
 
@@ -132,16 +135,28 @@ async function loadTodayIot() {
 // LOAD 14-DAY BAR CHART
 // ══════════════════════════════════════════════
 async function loadDailyBar() {
-    const since = new Date();
-    since.setDate(since.getDate() - 13);
+    const today = todayStr();
+    const [year, month, day] = today.split('-').map(Number);
+    const lastDay = new Date(Date.UTC(year, month - 1, day));
+    bar14Labels = Array.from({ length: 14 }, (_, index) => {
+        const date = new Date(lastDay);
+        date.setUTCDate(date.getUTCDate() - (13 - index));
+        return date.toISOString().slice(0, 10);
+    });
+    const since = new Date(`${bar14Labels[0]}T00:00:00+07:00`);
     const raw = await fetchReadingsBetween(since.toISOString(), new Date().toISOString());
     const grouped = {};
+    // Group records by day, then calculate energy using real intervals per day
+    const byDay = {};
     raw.filter(isSensorReading).forEach(row => {
-        const day = row.created_at.slice(0, 10);
-        grouped[day] = (grouped[day] || 0) + (Number(row.power) || 0) * (30 / 3600);
+        const day = jakartaDateStr(new Date(row.created_at));
+        (byDay[day] = byDay[day] || []).push(row);
     });
-    bar14Labels = Object.keys(grouped).sort();
-    bar14Values = bar14Labels.map(day => +grouped[day].toFixed(1));
+    Object.entries(byDay).forEach(([day, rows]) => {
+        const intervalSec = medianIntervalSec(rows);
+        grouped[day] = rows.reduce((s, r) => s + (Number(r.power) || 0) * (intervalSec / 3600), 0);
+    });
+    bar14Values = bar14Labels.map(day => +((grouped[day] || 0).toFixed(1)));
 
     const todayIdx = bar14Labels.indexOf(todayStr());
     updateDailyBarChart(
@@ -200,27 +215,49 @@ async function loadDetailDate(date) {
     const maxP   = Math.max(...power);
     const minP   = Math.min(...power);
     const avgV   = avg(voltage);
-    const energy = +(power.reduce((s, p) => s + p * (30/3600), 0)).toFixed(1);
-    const eff    = maxP > 0 ? +((avgP / maxP) * 100).toFixed(1) : 0;
+    // Use real measured interval between consecutive records (fallback: 2s)
+    const intervalSec = medianIntervalSec(sensor);
+    const energy = +(power.reduce((s, p) => s + p * (intervalSec / 3600), 0)).toFixed(1);
+    const temperatures = sensor.filter(r => r.temperature != null).map(r => Number(r.temperature)).filter(Number.isFinite);
+    const humidities = sensor.filter(r => r.humidity != null).map(r => Number(r.humidity)).filter(Number.isFinite);
 
     setEl('ds-avgp', avgP.toFixed(1));
     setEl('ds-maxp', maxP.toFixed(1));
     setEl('ds-minp', minP.toFixed(1));
     setEl('ds-avgv', avgV.toFixed(2));
     setEl('ds-energy', energy);
-    setEl('ds-eff', eff);
+    setEl('ds-temp', temperatures.length ? avg(temperatures).toFixed(1) : '--');
+    setEl('ds-humidity', humidities.length ? avg(humidities).toFixed(1) : '--');
 
     // Dashboard KPIs
     setEl('dash-avg-power', avgP.toFixed(1));
     setEl('dash-max-power', maxP.toFixed(1));
+    setEl('dash-max-sub', `Puncak pukul ${labels[power.indexOf(maxP)] || '--'}`);
     setEl('dash-avg-volt', avgV.toFixed(2));
+    setEl('dash-volt-sub', `Maks: ${Math.max(...voltage).toFixed(2)} V · Min: ${Math.min(...voltage).toFixed(2)} V`);
     const relCount  = sensor.length;
-    const relExpect = Math.max(relCount, Math.round((24 * 60 * 60) / 30));
+    // Use actual measured interval to estimate expected records per day
+    const relInterval = medianIntervalSec(sensor);
+    const relExpect = Math.max(relCount, Math.round((24 * 60 * 60) / relInterval));
     const rel = Math.min(100, +((relCount / relExpect) * 100).toFixed(1));
     setEl('dash-reliability', rel);
     setEl('dash-rel-sub', `${relCount} record terkumpul`);
+    setEl('ds-reliability', rel);
+    setEl('dash-avg-temp', temperatures.length ? avg(temperatures).toFixed(1) : '--');
+    setEl('dash-temp-sub', temperatures.length
+        ? `Maks: ${Math.max(...temperatures).toFixed(1)} °C · Min: ${Math.min(...temperatures).toFixed(1)} °C`
+        : 'Tidak ada data');
+    setEl('dash-avg-humidity', humidities.length ? avg(humidities).toFixed(1) : '--');
+    setEl('dash-humidity-sub', humidities.length
+        ? `Maks: ${Math.max(...humidities).toFixed(1)}% · Min: ${Math.min(...humidities).toFixed(1)}%`
+        : 'Tidak ada data');
 
     updateDetailPowerChart(labels, power, voltage, current);
+    updateDetailEnvironmentChart(
+        labels,
+        sensor.map(r => r.temperature == null ? null : Number(r.temperature)),
+        sensor.map(r => r.humidity == null ? null : Number(r.humidity))
+    );
 
     // Extract servo positions from the readings list:
     const sLabels = [];
@@ -246,7 +283,15 @@ async function loadDetailDate(date) {
 }
 
 function clearDetailCards() {
-    ['ds-avgp','ds-maxp','ds-minp','ds-avgv','ds-energy','ds-eff'].forEach(id => setEl(id, '--'));
+    ['ds-avgp','ds-maxp','ds-minp','ds-avgv','ds-energy','ds-temp','ds-humidity',
+        'ds-reliability','dash-energy','dash-avg-power','dash-max-power','dash-avg-volt','dash-reliability',
+        'dash-avg-temp','dash-avg-humidity'].forEach(id => setEl(id, '--'));
+    ['dash-rel-sub','dash-temp-sub','dash-humidity-sub','dash-max-sub','dash-volt-sub','dash-energy-diff'].forEach(id => setEl(id, ''));
+    updateDetailPowerChart([], [], [], []);
+    updateDetailEnvironmentChart([], [], []);
+    updateDetailServoChart([], [], []);
+    populateTable([]);
+    populateLog([]);
 }
 
 function populateTable(sensor) {
@@ -380,9 +425,12 @@ function processSensorRow(row, realtime = true) {
     totalRecords++;
     refreshFuzzyCount();
 
-    // Compute today's energy: sum of power * interval
-    iotDataBuffer.push({ power, voltage, current });
-    const energy = iotDataBuffer.reduce((s, r) => s + r.power * (30/3600), 0);
+    // Compute today's energy: sum of power * measured interval
+    iotDataBuffer.push({ power, voltage, current, ts: row.created_at });
+    const liveInterval = medianIntervalSec(
+        iotDataBuffer.filter(b => b.ts).map(b => ({ created_at: b.ts }))
+    );
+    const energy = iotDataBuffer.reduce((s, r) => s + r.power * (liveInterval / 3600), 0);
     setElAnimate('iot-energy', energy.toFixed(1));
 
     // Online status
@@ -450,10 +498,15 @@ function setOnline(online) {
 // ══════════════════════════════════════════════
 async function setupWeather() {
     try {
-        const r = await fetch('https://api.open-meteo.com/v1/forecast?latitude=-6.2&longitude=106.8&current_weather=true&hourly=precipitation_probability&timezone=Asia%2FJakarta');
+        const r = await fetch('https://api.open-meteo.com/v1/forecast?latitude=-6.2088&longitude=106.8456&current_weather=true&hourly=precipitation_probability&timezone=Asia%2FJakarta');
         const j = await r.json();
         const code = j.current_weather?.weathercode ?? 0;
-        const rain = j.hourly?.precipitation_probability?.[new Date().getHours()] ?? 0;
+        const jakartaHour = Number(new Intl.DateTimeFormat('en-GB', {
+            timeZone: 'Asia/Jakarta',
+            hour: '2-digit',
+            hourCycle: 'h23'
+        }).format(new Date()));
+        const rain = j.hourly?.precipitation_probability?.[jakartaHour] ?? 0;
         let icon = '☀️', label = 'Cerah';
         if (code >= 80)  { icon = '🌩️'; label = 'Hujan Lebat'; }
         else if (code >= 61) { icon = '🌧️'; label = 'Hujan'; }
@@ -498,9 +551,9 @@ async function exportReadingsCsv(date, type) {
 }
 
 async function fetchReadingsForDate(date) {
-    const start = new Date(`${date}T00:00:00`);
+    const start = new Date(`${date}T00:00:00+07:00`);
     const end = new Date(start);
-    end.setDate(end.getDate() + 1);
+    end.setUTCDate(end.getUTCDate() + 1);
     return fetchReadingsBetween(start.toISOString(), end.toISOString());
 }
 
@@ -592,7 +645,7 @@ function startSimulation() {
     const labels14 = []; const vals14 = [];
     for (let i = 13; i >= 0; i--) {
         const d = new Date(); d.setDate(d.getDate() - i);
-        labels14.push(d.toISOString().slice(0, 10));
+        labels14.push(jakartaDateStr(d));
         vals14.push(+(400 + Math.random() * 350).toFixed(1));
     }
     bar14Labels = labels14; bar14Values = vals14;
@@ -666,7 +719,12 @@ function setElAnimate(id, val) {
     }
 }
 function todayStr() {
-    return new Date().toISOString().slice(0, 10);
+    return jakartaDateStr(new Date());
+}
+function jakartaDateStr(date) {
+    const parts = JAKARTA_DATE_FORMATTER.formatToParts(date);
+    const part = type => parts.find(item => item.type === type)?.value;
+    return `${part('year')}-${part('month')}-${part('day')}`;
 }
 function fmtTime(iso) {
     return new Date(iso).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false });
@@ -680,6 +738,32 @@ function avg(arr) {
     return arr.reduce((s, v) => s + v, 0) / arr.length;
 }
 function constrain(v, min, max) { return Math.min(max, Math.max(min, v)); }
+
+/**
+ * Hitung median interval (detik) antar rekaman berdasarkan created_at.
+ * Jika rekaman < 2, fallback ke DEFAULT_INTERVAL_SEC (2 detik sesuai
+ * frekuensi pengiriman ESP32 yang sesungguhnya).
+ */
+const DEFAULT_INTERVAL_SEC = 2;
+function medianIntervalSec(rows) {
+    if (!rows || rows.length < 2) return DEFAULT_INTERVAL_SEC;
+    const sorted = rows
+        .map(r => new Date(r.created_at).getTime())
+        .filter(t => Number.isFinite(t))
+        .sort((a, b) => a - b);
+    if (sorted.length < 2) return DEFAULT_INTERVAL_SEC;
+    const diffs = [];
+    for (let i = 1; i < sorted.length; i++) {
+        const d = (sorted[i] - sorted[i - 1]) / 1000;
+        if (d > 0 && d < 3600) diffs.push(d); // abaikan gap > 1 jam (data putus)
+    }
+    if (!diffs.length) return DEFAULT_INTERVAL_SEC;
+    diffs.sort((a, b) => a - b);
+    const mid = Math.floor(diffs.length / 2);
+    return diffs.length % 2 === 0
+        ? (diffs[mid - 1] + diffs[mid]) / 2
+        : diffs[mid];
+}
 
 // Start
 document.addEventListener('DOMContentLoaded', init);
