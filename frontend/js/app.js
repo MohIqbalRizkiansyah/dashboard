@@ -15,7 +15,7 @@ import {
 // ══════════════════════════════════════════════
 // Set VITE_BACKEND_URL in frontend/.env when the backend is hosted elsewhere.
 // ══════════════════════════════════════════════
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://server-j22jq4eq6-mohiqbalrizkiansyahs-projects.vercel.app';
 const JAKARTA_DATE_FORMATTER = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Asia/Jakarta',
     year: 'numeric',
