@@ -13,9 +13,12 @@ import {
 } from './charts.js';
 
 // ══════════════════════════════════════════════
-// Set VITE_BACKEND_URL in frontend/.env when the backend is hosted elsewhere.
+// Production API requests use the same-origin Vercel rewrite; local development
+// can target a separately hosted backend with VITE_BACKEND_URL.
 // ══════════════════════════════════════════════
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://server-8sp0s8hlj-mohiqbalrizkiansyahs-projects.vercel.app';
+const BACKEND_URL = import.meta.env.PROD
+    ? window.location.origin
+    : import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
 const JAKARTA_DATE_FORMATTER = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Asia/Jakarta',
     year: 'numeric',
