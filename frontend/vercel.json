@@ -6,7 +6,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://server-8sp0s8hlj-mohiqbalrizkiansyahs-projects.vercel.app/api/:path*"
+      "destination": "https://server-tawny-beta.vercel.app/api/:path*"
     }
   ]
 }
