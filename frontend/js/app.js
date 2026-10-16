@@ -13,12 +13,10 @@ import {
 } from './charts.js';
 
 // ══════════════════════════════════════════════
-// Production API requests use the same-origin Vercel rewrite; local development
-// can target a separately hosted backend with VITE_BACKEND_URL.
+// API requests stay same-origin: Vite proxies /api during development, and
+// Vercel forwards /api to the backend in production.
 // ══════════════════════════════════════════════
-const BACKEND_URL = import.meta.env.PROD
-    ? window.location.origin
-    : import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
+const BACKEND_URL = window.location.origin;
 const JAKARTA_DATE_FORMATTER = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Asia/Jakarta',
     year: 'numeric',
