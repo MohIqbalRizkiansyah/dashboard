@@ -15,7 +15,7 @@ import {
 // ══════════════════════════════════════════════
 // Set VITE_BACKEND_URL in frontend/.env when the backend is hosted elsewhere.
 // ══════════════════════════════════════════════
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://server-j22jq4eq6-mohiqbalrizkiansyahs-projects.vercel.app';
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://server-8sp0s8hlj-mohiqbalrizkiansyahs-projects.vercel.app';
 const JAKARTA_DATE_FORMATTER = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Asia/Jakarta',
     year: 'numeric',
@@ -334,15 +334,65 @@ function setupRealtime() {
     setInterval(pollReadings, 3000);
 }
 
+async function fetchBackendJson(url, operation) {
+    let response;
+    try {
+        response = await fetch(url);
+    } catch (error) {
+        const reason = error instanceof Error ? error.message : String(error);
+        throw new Error(
+            `${operation} failed before the backend returned a response (${reason}). ` +
+            `Check that ${url.origin} is reachable and allows the frontend origin ` +
+            `${window.location.origin} through CORS.`,
+            { cause: error }
+        );
+    }
+
+    let bodyText;
+    try {
+        bodyText = await response.text();
+    } catch (error) {
+        throw new Error(
+            `${operation} received HTTP ${response.status}, but the response body could not be read.`,
+            { cause: error }
+        );
+    }
+
+    let result;
+    try {
+        result = bodyText ? JSON.parse(bodyText) : null;
+    } catch (error) {
+        if (response.ok) {
+            throw new Error(`${operation} failed: the backend returned invalid JSON.`, { cause: error });
+        }
+    }
+
+    if (!response.ok) {
+        const detail = result?.error || bodyText.trim();
+        throw new Error(
+            `${operation} failed with HTTP ${response.status}${response.statusText ? ` ${response.statusText}` : ''}` +
+            `${detail ? `: ${detail}` : ''}.`
+        );
+    }
+    if (!result || typeof result !== 'object') {
+        throw new Error(`${operation} failed: the backend returned an empty or invalid response.`);
+    }
+    if (!result.success) {
+        throw new Error(`${operation} failed: ${result.error || 'the backend reported an unsuccessful response.'}`);
+    }
+    if (!Array.isArray(result.data)) {
+        throw new Error(`${operation} failed: the backend response did not contain a data array.`);
+    }
+
+    return result;
+}
+
 async function pollReadings() {
     try {
         const url = new URL('/api/readings', BACKEND_URL);
         url.searchParams.set('since', pollCursor || new Date(Date.now() - OFFLINE_AFTER_MS).toISOString());
         url.searchParams.set('limit', '1000');
-        const response = await fetch(url);
-        if (!response.ok) throw new Error(`Backend HTTP ${response.status}`);
-        const result = await response.json();
-        if (!result.success) throw new Error(result.error || 'Gagal membaca data backend');
+        const result = await fetchBackendJson(url, 'Live dashboard readings request');
         result.data.forEach(row => consumeReading(row, true));
     } catch (error) {
         console.error('Gagal mengambil data dashboard dari backend:', error);
@@ -566,10 +616,7 @@ async function fetchReadingsBetween(from, to) {
         url.searchParams.set('to', to);
         url.searchParams.set('limit', String(pageSize));
         url.searchParams.set('offset', String(offset));
-        const response = await fetch(url);
-        if (!response.ok) throw new Error(`Backend HTTP ${response.status}`);
-        const result = await response.json();
-        if (!result.success) throw new Error(result.error || 'Gagal membaca riwayat');
+        const result = await fetchBackendJson(url, 'Historical readings request');
         rows.push(...result.data);
         if (result.data.length < pageSize) return rows;
     }
