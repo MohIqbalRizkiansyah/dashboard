@@ -13,10 +13,11 @@ import {
 } from './charts.js';
 
 // ══════════════════════════════════════════════
-// API requests stay same-origin: Vite proxies /api during development, and
-// Vercel forwards /api to the backend in production.
+// Use Vite's same-origin proxy locally and the deployed API in production.
 // ══════════════════════════════════════════════
-const BACKEND_URL = window.location.origin;
+const BACKEND_URL = import.meta.env.DEV
+    ? window.location.origin
+    : (import.meta.env.VITE_BACKEND_URL || 'https://server-seven-lovat-93.vercel.app');
 const JAKARTA_DATE_FORMATTER = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Asia/Jakarta',
     year: 'numeric',
