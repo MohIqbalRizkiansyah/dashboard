@@ -353,7 +353,12 @@ async function sendDashboardHeartbeat() {
     try {
         const url = new URL('/api/dashboard-heartbeat', BACKEND_URL);
         const response = await fetch(url, { method: 'POST' });
-        const result = await response.json();
+        let result;
+        try {
+            result = await response.json();
+        } catch {
+            throw new Error(response.ok ? 'Backend returned invalid JSON.' : `HTTP ${response.status}`);
+        }
         if (!response.ok || !result.success) {
             throw new Error(result.error || `HTTP ${response.status}`);
         }
@@ -413,7 +418,9 @@ function formatReadingSummary(row) {
         row.power != null ? `P=${row.power}W` : null,
         row.temperature != null ? `T=${row.temperature}°C` : null,
         row.humidity != null ? `RH=${row.humidity}%` : null,
-        row.ldr_top_left != null ? `LDR=[${row.ldr_top_left},${row.ldr_top_right},${row.ldr_bottom_left},${row.ldr_bottom_right}]` : null,
+        [row.ldr_top_left, row.ldr_top_right, row.ldr_bottom_left, row.ldr_bottom_right].some(value => value != null)
+            ? `LDR=[${row.ldr_top_left ?? '--'},${row.ldr_top_right ?? '--'},${row.ldr_bottom_left ?? '--'},${row.ldr_bottom_right ?? '--'}]`
+            : null,
         row.servo_azimuth != null ? `az=${row.servo_azimuth}°` : null,
         row.servo_elevation != null ? `el=${row.servo_elevation}°` : null,
         row.created_at ? `waktu=${row.created_at}` : null
@@ -726,7 +733,16 @@ async function fetchReadingsBetween(from, to) {
         url.searchParams.set('offset', String(offset));
         const result = await fetchBackendJson(url, 'Historical readings request');
         rows.push(...result.data);
-        if (result.data.length < pageSize) return rows;
+        if (result.data.length < pageSize) {
+            if (rows.length) {
+                const sample = rows.slice().reverse().find(isSensorReading) || rows[rows.length - 1];
+                logConnectionEvent(
+                    `Supabase → Backend → Dashboard: frontend menerima ${rows.length} data historis; contoh: ${formatReadingSummary(sample)}.`,
+                    'success'
+                );
+            }
+            return rows;
+        }
     }
 }
 
