@@ -17,7 +17,7 @@ import {
 // ══════════════════════════════════════════════
 const BACKEND_URL = import.meta.env.DEV
     ? window.location.origin
-    : (import.meta.env.VITE_BACKEND_URL || 'https://server-seven-lovat-93.vercel.app');
+    : (import.meta.env.VITE_BACKEND_URL || 'https://server-yhim.vercel.app');
 const JAKARTA_DATE_FORMATTER = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Asia/Jakarta',
     year: 'numeric',
@@ -36,6 +36,7 @@ let lastSeen      = null;
 let selectedDate  = todayStr();
 const OFFLINE_AFTER_MS = 90_000;
 const STATUS_POLL_INTERVAL_MS = 10_000;
+const LIVE_POLL_INTERVAL_MS = 1_000;
 let pollCursor = null;
 const seenReadingIds = new Set();
 const MAX_CONNECTION_LOG_ENTRIES = 100;
@@ -350,8 +351,7 @@ function populateLog(sensor) {
 // REALTIME SUBSCRIPTION
 // ══════════════════════════════════════════════
 function setupRealtime() {
-    pollReadings();
-    setInterval(pollReadings, 3000);
+    void pollReadings();
 }
 
 async function sendDashboardHeartbeat() {
@@ -580,6 +580,8 @@ async function pollReadings() {
         }
         readingsConnectionFailed = true;
         setOnline(false);
+    } finally {
+        setTimeout(pollReadings, LIVE_POLL_INTERVAL_MS);
     }
 }
 
