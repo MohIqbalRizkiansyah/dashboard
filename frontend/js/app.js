@@ -37,6 +37,10 @@ let selectedDate  = todayStr();
 const OFFLINE_AFTER_MS = 90_000;
 let pollCursor = null;
 const seenReadingIds = new Set();
+const MAX_CONNECTION_LOG_ENTRIES = 100;
+let dashboardHeartbeatConnected = null;
+let readingsConnectionFailed = false;
+let readingsConnectionLogged = false;
 
 // 14-day cached labels & values
 let bar14Labels = [];
@@ -46,6 +50,8 @@ let bar14Values = [];
 // INIT
 // ══════════════════════════════════════════════
 async function init() {
+    document.getElementById('console-clear')?.addEventListener('click', clearConnectionConsole);
+    logConnectionEvent('Dashboard dimulai; menyiapkan koneksi backend.');
     initIotChart();
     initServoChart();
     initDailyBarChart(onBarClick);
@@ -127,6 +133,10 @@ window.switchDetailTab = function(tab) {
 async function loadTodayIot() {
     const sensorData = await fetchReadingsForDate(todayStr());
     sensorData.forEach(row => consumeReading(row, false));
+    logConnectionEvent(
+        `Dashboard menerima ${sensorData.length} data historis dari backend${sensorData.length ? `; contoh: ${formatReadingSummary(sensorData[sensorData.length - 1])}` : '.'}`,
+        sensorData.length ? 'success' : 'info'
+    );
 
     if (sensorData?.length) {
         totalRecords = sensorData.filter(isSensorReading).length;
@@ -346,9 +356,65 @@ async function sendDashboardHeartbeat() {
         if (!response.ok || !result.success) {
             throw new Error(result.error || `HTTP ${response.status}`);
         }
+        if (dashboardHeartbeatConnected !== true) {
+            logConnectionEvent('Dashboard → Backend: heartbeat terkirim; backend menerima koneksi dashboard.', 'success');
+        }
+        dashboardHeartbeatConnected = true;
     } catch (error) {
-        console.error('Gagal mengirim heartbeat dashboard ke backend:', error);
+        if (dashboardHeartbeatConnected !== false) {
+            console.error('Gagal mengirim heartbeat dashboard ke backend:', error);
+            logConnectionEvent(`Dashboard → Backend: heartbeat gagal (${error.message}).`, 'error');
+        }
+        dashboardHeartbeatConnected = false;
     }
+}
+
+function logConnectionEvent(message, type = 'info', writeBrowserConsole = true) {
+    const list = document.getElementById('connection-console-list');
+    const time = new Date().toLocaleTimeString('id-ID', { hour12: false });
+    if (writeBrowserConsole) {
+        const logger = type === 'error' ? console.error : console.info;
+        logger(`[Solar Tracker ${time}] ${message}`);
+    }
+    if (!list) return;
+
+    list.querySelector('.console-empty')?.remove();
+    const entry = document.createElement('div');
+    entry.className = `console-entry ${type}`;
+    const timestamp = document.createElement('span');
+    timestamp.className = 'console-time';
+    timestamp.textContent = time;
+    const content = document.createElement('span');
+    content.textContent = message;
+    entry.append(timestamp, content);
+    list.append(entry);
+
+    while (list.childElementCount > MAX_CONNECTION_LOG_ENTRIES) {
+        list.firstElementChild.remove();
+    }
+    list.scrollTop = list.scrollHeight;
+}
+
+function clearConnectionConsole() {
+    const list = document.getElementById('connection-console-list');
+    if (!list) return;
+    list.replaceChildren();
+}
+
+function formatReadingSummary(row) {
+    const values = [
+        row.device_id ? `device=${row.device_id}` : null,
+        row.voltage != null ? `V=${row.voltage}` : null,
+        row.current != null ? `I=${row.current}mA` : null,
+        row.power != null ? `P=${row.power}W` : null,
+        row.temperature != null ? `T=${row.temperature}°C` : null,
+        row.humidity != null ? `RH=${row.humidity}%` : null,
+        row.ldr_top_left != null ? `LDR=[${row.ldr_top_left},${row.ldr_top_right},${row.ldr_bottom_left},${row.ldr_bottom_right}]` : null,
+        row.servo_azimuth != null ? `az=${row.servo_azimuth}°` : null,
+        row.servo_elevation != null ? `el=${row.servo_elevation}°` : null,
+        row.created_at ? `waktu=${row.created_at}` : null
+    ].filter(Boolean);
+    return values.length ? values.join(', ') : `id=${row.id ?? 'unknown'}`;
 }
 
 async function fetchBackendJson(url, operation) {
@@ -410,9 +476,30 @@ async function pollReadings() {
         url.searchParams.set('since', pollCursor || new Date(Date.now() - OFFLINE_AFTER_MS).toISOString());
         url.searchParams.set('limit', '1000');
         const result = await fetchBackendJson(url, 'Live dashboard readings request');
+        if (readingsConnectionFailed) {
+            logConnectionEvent('Backend kembali berhasil membaca data Supabase.', 'success');
+            readingsConnectionFailed = false;
+        }
+        if (result.data.length) {
+            const newRows = result.data.filter(row => row.id == null || !seenReadingIds.has(row.id));
+            if (newRows.length) {
+                logConnectionEvent(
+                    `Supabase → Backend → Dashboard: ${newRows.length} data diterima; ${formatReadingSummary(newRows[newRows.length - 1])}.`,
+                    'success'
+                );
+            }
+            readingsConnectionLogged = true;
+        } else if (!readingsConnectionLogged) {
+            logConnectionEvent('Supabase → Backend: query berhasil; belum ada data baru untuk dashboard.', 'success');
+            readingsConnectionLogged = true;
+        }
         result.data.forEach(row => consumeReading(row, true));
     } catch (error) {
-        console.error('Gagal mengambil data dashboard dari backend:', error);
+        if (!readingsConnectionFailed) {
+            console.error('Gagal mengambil data dashboard dari backend:', error);
+            logConnectionEvent(`Supabase → Backend: pengambilan data gagal (${error.message}).`, 'error');
+        }
+        readingsConnectionFailed = true;
         setOnline(false);
     }
 }
