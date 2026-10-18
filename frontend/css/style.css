@@ -583,6 +583,55 @@ canvas { display: block; }
 .live-dashboard .status-bar { min-height: 40px; }
 .live-dashboard .device-status { font-size: 10px; }
 .live-dashboard .status-right { gap: 8px; }
+.connection-console {
+    padding: 11px 13px !important;
+}
+.connection-console-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+.connection-console-caption {
+    margin-top: 4px;
+    color: var(--text2);
+    font-size: 10px;
+}
+.console-clear-btn {
+    padding: 4px 8px;
+    border: 1px solid var(--border2);
+    border-radius: 4px;
+    background: transparent;
+    color: var(--text2);
+    font: inherit;
+    font-size: 9px;
+}
+.console-clear-btn:hover { border-color: var(--cyan); color: var(--cyan); }
+.connection-console-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-height: 180px;
+    overflow-y: auto;
+    scrollbar-color: var(--border2) transparent;
+}
+.console-entry {
+    display: grid;
+    grid-template-columns: 68px minmax(0, 1fr);
+    gap: 8px;
+    padding: 5px 7px;
+    border-left: 2px solid var(--cyan);
+    background: rgba(5, 12, 23, 0.55);
+    color: var(--text2);
+    font-size: 9px;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+.console-entry.success { border-left-color: var(--green); color: #b8e8d6; }
+.console-entry.error { border-left-color: var(--red); color: #ffb5b5; }
+.console-time { color: #59718f; }
+.console-empty { padding: 8px; color: var(--text2); font-size: 9px; }
 .live-dashboard .weather-badge { border-radius: 4px; font-size: 10px; }
 .live-dashboard .live-badge { padding: 4px 9px; border-radius: 12px; font-size: 10px; }
 .live-dashboard .btn-export { padding: 6px 10px; border-radius: 4px; font-size: 10px; }
