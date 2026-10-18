@@ -72,6 +72,7 @@ async function init() {
         await loadDetailDate(selectedDate);
     } catch (error) {
         console.error('Gagal memuat data awal dashboard:', error);
+        logConnectionEvent(`Dashboard → Backend: gagal mengambil data awal (${error.message}).`, 'error');
         setOnline(false);
     }
     setupRealtime();
@@ -398,7 +399,10 @@ function logConnectionEvent(message, type = 'info', writeBrowserConsole = true) 
 function clearConnectionConsole() {
     const list = document.getElementById('connection-console-list');
     if (!list) return;
-    list.replaceChildren();
+    const empty = document.createElement('div');
+    empty.className = 'console-empty';
+    empty.textContent = 'Console dibersihkan; menunggu aktivitas koneksi...';
+    list.replaceChildren(empty);
 }
 
 function formatReadingSummary(row) {
