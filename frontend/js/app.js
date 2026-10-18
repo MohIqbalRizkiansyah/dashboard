@@ -35,12 +35,15 @@ let totalRecords  = 0;
 let lastSeen      = null;
 let selectedDate  = todayStr();
 const OFFLINE_AFTER_MS = 90_000;
+const STATUS_POLL_INTERVAL_MS = 10_000;
 let pollCursor = null;
 const seenReadingIds = new Set();
 const MAX_CONNECTION_LOG_ENTRIES = 100;
 let dashboardHeartbeatConnected = null;
 let readingsConnectionFailed = false;
 let readingsConnectionLogged = false;
+let lastReportedEsp32State = null;
+let statusConnectionFailed = false;
 
 // 14-day cached labels & values
 let bar14Labels = [];
@@ -78,6 +81,8 @@ async function init() {
     setupRealtime();
     sendDashboardHeartbeat();
     setInterval(sendDashboardHeartbeat, 10_000);
+    refreshConnectionStatus();
+    setInterval(refreshConnectionStatus, STATUS_POLL_INTERVAL_MS);
     setInterval(() => {
         setOnline(lastSeen !== null && Date.now() - lastSeen.getTime() <= OFFLINE_AFTER_MS);
     }, 5000);
@@ -408,6 +413,69 @@ function clearConnectionConsole() {
     empty.className = 'console-empty';
     empty.textContent = 'Console dibersihkan; menunggu aktivitas koneksi...';
     list.replaceChildren(empty);
+}
+
+function updateConsoleStatus(id, state, detail) {
+    const item = document.getElementById(id);
+    if (!item) return;
+    item.classList.remove('online', 'offline', 'pending');
+    item.classList.add(state);
+    item.querySelector('.connection-status-value').textContent = detail;
+}
+
+async function refreshConnectionStatus() {
+    try {
+        const url = new URL('/api/status', BACKEND_URL);
+        const response = await fetch(url, { cache: 'no-store' });
+        const status = await response.json();
+        if (!response.ok || !status.success) {
+            throw new Error(status.error || `HTTP ${response.status}`);
+        }
+
+        updateConsoleStatus(
+            'console-esp32-status',
+            status.esp32?.connected ? 'online' : 'offline',
+            status.esp32?.connected
+                ? `ONLINE · ${status.esp32.deviceId}`
+                : status.esp32?.lastSeen
+                    ? `OFFLINE · terakhir ${new Date(status.esp32.lastSeen).toLocaleTimeString('id-ID')}`
+                    : `BELUM TERDETEKSI · ${status.esp32?.deviceId || 'solar-tracker-01'}`
+        );
+        updateConsoleStatus('console-backend-status', 'online', 'ONLINE');
+        updateConsoleStatus(
+            'console-supabase-status',
+            status.supabase.connected ? 'online' : 'offline',
+            status.supabase.connected ? 'ONLINE' : 'OFFLINE'
+        );
+        updateConsoleStatus(
+            'console-dashboard-status',
+            status.dashboard.connected ? 'online' : 'offline',
+            status.dashboard.connected ? 'ONLINE' : 'OFFLINE'
+        );
+
+        const previousEsp32State = lastReportedEsp32State;
+        lastReportedEsp32State = status.esp32?.connected ?? false;
+        if (previousEsp32State !== lastReportedEsp32State) {
+            logConnectionEvent(
+                lastReportedEsp32State
+                    ? `ESP32 terdeteksi (${status.esp32.deviceId}); data sensor masuk ke backend dan Supabase.`
+                    : status.esp32?.lastSeen
+                        ? `ESP32 OFFLINE; data terakhir diterima ${new Date(status.esp32.lastSeen).toLocaleString('id-ID')}.`
+                        : `ESP32 belum terdeteksi; belum ada heartbeat dari ${status.esp32?.deviceId || 'solar-tracker-01'}.`,
+                lastReportedEsp32State ? 'success' : 'error'
+            );
+        }
+    } catch (error) {
+        updateConsoleStatus('console-backend-status', 'offline', 'TIDAK TERHUBUNG');
+        updateConsoleStatus('console-supabase-status', 'pending', 'STATUS TIDAK TERSEDIA');
+        updateConsoleStatus('console-dashboard-status', 'offline', 'TIDAK TERHUBUNG');
+        if (!statusConnectionFailed) {
+            logConnectionEvent(`Gagal memeriksa status ESP32/backend (${error.message}).`, 'error');
+        }
+        statusConnectionFailed = true;
+        return;
+    }
+    statusConnectionFailed = false;
 }
 
 function formatReadingSummary(row) {

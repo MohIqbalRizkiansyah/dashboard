@@ -65,6 +65,28 @@
                 </div>
                 <button class="console-clear-btn" id="console-clear" type="button">Bersihkan</button>
             </div>
+            <div class="connection-status-grid" aria-live="polite">
+                <div class="connection-status-item offline" id="console-esp32-status">
+                    <span class="connection-status-dot"></span>
+                    <span class="connection-status-name">ESP32</span>
+                    <span class="connection-status-value">Memeriksa...</span>
+                </div>
+                <div class="connection-status-item offline" id="console-backend-status">
+                    <span class="connection-status-dot"></span>
+                    <span class="connection-status-name">Backend</span>
+                    <span class="connection-status-value">Menunggu data</span>
+                </div>
+                <div class="connection-status-item offline" id="console-supabase-status">
+                    <span class="connection-status-dot"></span>
+                    <span class="connection-status-name">Supabase</span>
+                    <span class="connection-status-value">Memeriksa...</span>
+                </div>
+                <div class="connection-status-item offline" id="console-dashboard-status">
+                    <span class="connection-status-dot"></span>
+                    <span class="connection-status-name">Dashboard</span>
+                    <span class="connection-status-value">Menunggu koneksi</span>
+                </div>
+            </div>
             <div class="connection-console-list" id="connection-console-list" role="log" aria-live="polite" aria-relevant="additions">
                 <div class="console-empty">Menunggu aktivitas koneksi...</div>
             </div>

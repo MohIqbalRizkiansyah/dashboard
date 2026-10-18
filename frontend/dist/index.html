@@ -6,8 +6,8 @@
     <title>Solar Tracker – IoT Monitor</title>
     <meta name="description" content="Dual Axis Solar Tracker – Monitoring IoT realtime ESP32">
     <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
-  <script type="module" crossorigin src="/assets/index-DCMuTwbX.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/index-qjKjtqtP.css">
+  <script type="module" crossorigin src="/assets/index-DwW11Zlm.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-CnBtq94d.css">
 </head>
 <body>
 
@@ -57,6 +57,41 @@
                 </button>
             </div>
         </div>
+
+        <section class="connection-console glass-card" aria-labelledby="connection-console-title">
+            <div class="connection-console-header">
+                <div>
+                    <div class="panel-title" id="connection-console-title">CONSOLE ALIRAN DATA</div>
+                    <div class="connection-console-caption">ESP32 → Backend → Supabase → Dashboard</div>
+                </div>
+                <button class="console-clear-btn" id="console-clear" type="button">Bersihkan</button>
+            </div>
+            <div class="connection-status-grid" aria-live="polite">
+                <div class="connection-status-item offline" id="console-esp32-status">
+                    <span class="connection-status-dot"></span>
+                    <span class="connection-status-name">ESP32</span>
+                    <span class="connection-status-value">Memeriksa...</span>
+                </div>
+                <div class="connection-status-item offline" id="console-backend-status">
+                    <span class="connection-status-dot"></span>
+                    <span class="connection-status-name">Backend</span>
+                    <span class="connection-status-value">Menunggu data</span>
+                </div>
+                <div class="connection-status-item offline" id="console-supabase-status">
+                    <span class="connection-status-dot"></span>
+                    <span class="connection-status-name">Supabase</span>
+                    <span class="connection-status-value">Memeriksa...</span>
+                </div>
+                <div class="connection-status-item offline" id="console-dashboard-status">
+                    <span class="connection-status-dot"></span>
+                    <span class="connection-status-name">Dashboard</span>
+                    <span class="connection-status-value">Menunggu koneksi</span>
+                </div>
+            </div>
+            <div class="connection-console-list" id="connection-console-list" role="log" aria-live="polite" aria-relevant="additions">
+                <div class="console-empty">Menunggu aktivitas koneksi...</div>
+            </div>
+        </section>
 
         <!-- KPI Cards -->
         <div class="kpi-grid kpi-6">

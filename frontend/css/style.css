@@ -598,6 +598,47 @@ canvas { display: block; }
     color: var(--text2);
     font-size: 10px;
 }
+.connection-status-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+    margin-bottom: 8px;
+}
+.connection-status-item {
+    display: grid;
+    grid-template-columns: 8px minmax(0, 1fr);
+    align-items: center;
+    column-gap: 6px;
+    padding: 7px 8px;
+    background: rgba(5, 12, 23, 0.55);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: 9px;
+}
+.connection-status-dot {
+    width: 7px;
+    height: 7px;
+    grid-row: span 2;
+    border-radius: 50%;
+    background: var(--text3);
+}
+.connection-status-name { color: var(--text2); }
+.connection-status-value {
+    min-width: 0;
+    overflow: hidden;
+    color: var(--text);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.connection-status-item.online .connection-status-dot {
+    background: var(--green);
+    box-shadow: 0 0 7px var(--green);
+}
+.connection-status-item.online .connection-status-value { color: var(--green); }
+.connection-status-item.offline .connection-status-dot { background: var(--red); }
+.connection-status-item.offline .connection-status-value { color: #ff9d9d; }
+.connection-status-item.pending .connection-status-dot { background: var(--yellow); }
+.connection-status-item.pending .connection-status-value { color: var(--yellow); }
 .console-clear-btn {
     padding: 4px 8px;
     border: 1px solid var(--border2);
@@ -767,6 +808,7 @@ canvas { display: block; }
     .live-dashboard .kpi-grid,
     .history-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .live-dashboard .status-right { flex-wrap: wrap; }
+    .connection-status-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .live-dashboard .kpi-value { font-size: 22px; }
     .history-dashboard .detail-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .history-dashboard .detail-header { align-items: flex-start; }
