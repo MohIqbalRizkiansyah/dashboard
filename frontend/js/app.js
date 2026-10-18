@@ -69,6 +69,8 @@ async function init() {
         setOnline(false);
     }
     setupRealtime();
+    sendDashboardHeartbeat();
+    setInterval(sendDashboardHeartbeat, 10_000);
     setInterval(() => {
         setOnline(lastSeen !== null && Date.now() - lastSeen.getTime() <= OFFLINE_AFTER_MS);
     }, 5000);
@@ -334,6 +336,19 @@ function populateLog(sensor) {
 function setupRealtime() {
     pollReadings();
     setInterval(pollReadings, 3000);
+}
+
+async function sendDashboardHeartbeat() {
+    try {
+        const url = new URL('/api/dashboard-heartbeat', BACKEND_URL);
+        const response = await fetch(url, { method: 'POST' });
+        const result = await response.json();
+        if (!response.ok || !result.success) {
+            throw new Error(result.error || `HTTP ${response.status}`);
+        }
+    } catch (error) {
+        console.error('Gagal mengirim heartbeat dashboard ke backend:', error);
+    }
 }
 
 async function fetchBackendJson(url, operation) {
