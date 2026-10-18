@@ -57,6 +57,19 @@
             </div>
         </div>
 
+        <section class="connection-console glass-card" aria-labelledby="connection-console-title">
+            <div class="connection-console-header">
+                <div>
+                    <div class="panel-title" id="connection-console-title">CONSOLE ALIRAN DATA</div>
+                    <div class="connection-console-caption">ESP32 → Backend → Supabase → Dashboard</div>
+                </div>
+                <button class="console-clear-btn" id="console-clear" type="button">Bersihkan</button>
+            </div>
+            <div class="connection-console-list" id="connection-console-list" role="log" aria-live="polite" aria-relevant="additions">
+                <div class="console-empty">Menunggu aktivitas koneksi...</div>
+            </div>
+        </section>
+
         <!-- KPI Cards -->
         <div class="kpi-grid kpi-6">
             <div class="kpi-card">
